@@ -95,5 +95,4 @@ Follow these steps to run **MTP Flex** locally.
 ### 2️⃣ Clone the Repository
 ```bash
 git clone https://github.com/your-username/MTP-Flex.git
-### 3️⃣ Install Dependenciescd MTP-Flex
-pip install -r requirements.txt
+cd MTP-Flex
