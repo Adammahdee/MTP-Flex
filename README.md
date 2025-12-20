@@ -80,9 +80,9 @@ Make the system easy to extend in the future
 
 🔄 UI refinements ongoing
 
-## 🗄️ Database EER Diagram
+## 🗄️ Database EERD
 
-![EER Diagram](eer_diagram.png)
+![EERD](eer_diagram.png)
 
 ## ⚙️ Setup & Installation
 
