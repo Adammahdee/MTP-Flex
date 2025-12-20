@@ -80,6 +80,10 @@ Make the system easy to extend in the future
 
 🔄 UI refinements ongoing
 
+## 🗄️ Database EER Diagram
+
+![EER Diagram](eer_diagram.png)
+
 ## ⚙️ Setup & Installation
 
 Follow these steps to run **MTP Flex** locally.
