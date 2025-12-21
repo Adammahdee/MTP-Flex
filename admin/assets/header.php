@@ -4,6 +4,15 @@
 // It assumes a session has been started and validated by init.php
 
 $admin_name = $_SESSION['user_name'] ?? 'Admin';
+
+// Fetch unread inquiries count for the sidebar badge
+$unread_inquiries_count = 0;
+try {
+    $stmt = $pdo->query("SELECT COUNT(*) FROM contact_inquiries WHERE is_read = 0");
+    $unread_inquiries_count = $stmt->fetchColumn();
+} catch (PDOException $e) {
+    // Table might not exist yet, ignore error
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -86,10 +95,19 @@ $admin_name = $_SESSION['user_name'] ?? 'Admin';
         <ul class="nav flex-column">
             <li class="nav-item"><a class="nav-link" href="/MTP Flex/admin/dashboard.php"><i class="fas fa-tachometer-alt"></i> Dashboard</a></li>
             <li class="nav-item"><a class="nav-link" href="/MTP Flex/admin/products.php"><i class="fas fa-box"></i> Products</a></li>
-            <li class="nav-item"><a class="nav-link" href="/MTP Flex/admin/categories.php"><i class="fas fa-tags"></i> Categories</a></li>
+            <li class="nav-item"><a class="nav-link" href="/MTP Flex/admin/categories.php"><i class="fas fa-tags"></i> Manage Categories</a></li>
             <li class="nav-item"><a class="nav-link" href="/MTP Flex/admin/orders.php"><i class="fas fa-shopping-cart"></i> Orders</a></li>
+            <li class="nav-item">
+                <a class="nav-link" href="/MTP Flex/admin/inquiries.php">
+                    <i class="fas fa-envelope"></i> Inquiries
+                    <?php if ($unread_inquiries_count > 0): ?>
+                        <span class="badge bg-danger rounded-pill ms-2"><?= $unread_inquiries_count ?></span>
+                    <?php endif; ?>
+                </a>
+            </li>
             <li class="nav-item"><a class="nav-link" href="/MTP Flex/admin/users.php"><i class="fas fa-users"></i> Users</a></li>
             <li class="nav-item"><a class="nav-link" href="/MTP Flex/admin/settings.php"><i class="fas fa-cogs"></i> Settings</a></li>
+            <li class="nav-item"><a class="nav-link" href="/MTP Flex/admin/seed_categories.php"><i class="fas fa-seedling"></i> Seed Categories</a></li>
         </ul>
         <div class="mt-auto" style="position: absolute; bottom: 20px; width: calc(100% - 40px);">
             <hr style="color: #6c757d;">

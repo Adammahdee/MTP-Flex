@@ -44,12 +44,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 email VARCHAR(255) NOT NULL,
                 subject VARCHAR(255) NOT NULL,
                 message TEXT NOT NULL,
+                is_read TINYINT(1) DEFAULT 0,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
 
             $user_id = $_SESSION['user_id'] ?? null;
             $stmt = $pdo->prepare("INSERT INTO contact_inquiries (user_id, name, email, subject, message) VALUES (?, ?, ?, ?, ?)");
             $stmt->execute([$user_id, $name, $email, $subject, $message]);
+
+            // --- Send Email Notification to Admin ---
+            // Note: This requires a configured mail server (like sendmail) on your web server to work.
+            // The '@' symbol suppresses errors if mail sending fails.
+            if (defined('ADMIN_EMAIL') && ADMIN_EMAIL !== 'admin@example.com') {
+                $to = ADMIN_EMAIL;
+                $email_subject = "New Contact Inquiry: " . $subject;
+                
+                $email_body = "You have received a new inquiry from your website contact form.\n\n";
+                $email_body .= "--------------------------------------------------\n";
+                $email_body .= "From: " . $name . " (" . $email . ")\n";
+                $email_body .= "Subject: " . $subject . "\n\n";
+                $email_body .= "Message:\n" . $message . "\n";
+                $email_body .= "--------------------------------------------------\n\n";
+                $email_body .= "You can view and reply to this inquiry in the admin panel.";
+
+                $headers = "From: no-reply@mtpflex.com\r\n" . "Reply-To: " . $email . "\r\n" . "X-Mailer: PHP/" . phpversion();
+
+                @mail($to, $email_subject, $email_body, $headers);
+            }
 
             $success = "Thank you for contacting us! We have received your message and will respond shortly.";
             $message = ''; // Clear message

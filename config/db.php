@@ -36,6 +36,10 @@ define('DB_USER_PASS', ''); // <-- Your root password, often blank in local deve
 define('DB_ADMIN_USER', 'root');
 define('DB_ADMIN_PASS', ''); // <-- Your root password, often blank in local development.
 
+// --- Email Configuration ---
+// Email address for admin notifications (e.g., new inquiries)
+define('ADMIN_EMAIL', 'admin@example.com'); // IMPORTANT: Change this to your actual admin email
+
 /**
  * Establishes a database connection using PDO.
  *

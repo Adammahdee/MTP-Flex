@@ -14,6 +14,68 @@ if (isset($_SESSION['user_id']) && isset($pdo)) {
         // Table might not exist yet, ignore error
     }
 }
+
+// Fetch Categories for Navigation
+$nav_categories = [];
+if (isset($pdo)) {
+    try {
+        $stmt = $pdo->query("SELECT id, name, parent_id FROM categories ORDER BY parent_id ASC, name ASC");
+        $all_cats = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $cat_map = [];
+        foreach ($all_cats as $c) {
+            $c['children'] = [];
+            $cat_map[$c['id']] = $c;
+        }
+        foreach ($cat_map as $id => &$c) {
+            if ($c['parent_id'] && isset($cat_map[$c['parent_id']])) {
+                $cat_map[$c['parent_id']]['children'][] = &$c;
+            } else {
+                $nav_categories[] = &$c;
+            }
+        }
+    } catch (PDOException $e) {
+        // Ignore error if table doesn't exist yet
+    }
+}
+
+// Helper function to render category dropdowns recursively
+function render_nav_dropdown_items($children) {
+    foreach ($children as $child) {
+        if (!empty($child['children'])) {
+            echo '<div class="nav-dropdown-submenu">';
+            echo '<a href="store.php?category=' . $child['id'] . '" class="has-children">' . htmlspecialchars($child['name']) . '</a>';
+            echo '<div class="nav-dropdown-menu">';
+            render_nav_dropdown_items($child['children']);
+            echo '</div>';
+            echo '</div>';
+        } else {
+            echo '<a href="store.php?category=' . $child['id'] . '">' . htmlspecialchars($child['name']) . '</a>';
+        }
+    }
+}
+
+// Custom navigation structure
+$apparel_group = ['name' => 'Apparel', 'children' => []];
+$kids_group = null;
+$seasonal_group = null;
+$accessories_group = null;
+$shop_all_cats = $nav_categories; // Keep a copy for the 'Shop' dropdown
+
+// Re-organize the fetched categories
+if (!empty($nav_categories)) {
+    foreach($nav_categories as $category) {
+        if (in_array($category['name'], ["Men’s", "Women’s", "Unisex"])) {
+            $apparel_group['children'][] = $category;
+        } elseif ($category['name'] === "Kid’s") {
+            $kids_group = $category;
+        } elseif ($category['name'] === "Seasonal / Occasion") {
+            $seasonal_group = $category;
+            $seasonal_group['name'] = 'Seasonal'; // Shorten name for display
+        } elseif (strtolower($category['name']) === 'accessories') {
+            $accessories_group = $category;
+        }
+    }
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -117,6 +179,60 @@ if (isset($_SESSION['user_id']) && isset($pdo)) {
             font-weight: bold;
             border: 2px solid var(--card-bg);
         }
+
+        /* Navigation Dropdowns */
+        .nav-item { position: relative; display: flex; align-items: center; height: 100%; }
+        .nav-item > a { display: flex; align-items: center; gap: 5px; color: var(--text-primary); text-decoration: none; font-weight: 500; transition: color 0.2s; }
+        .nav-item > a:hover { color: var(--accent-color); }
+        
+        .nav-dropdown-menu {
+            display: none;
+            position: absolute;
+            top: 100%;
+            left: 0;
+            background-color: var(--card-bg);
+            min-width: 220px;
+            box-shadow: var(--shadow);
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            z-index: 1000;
+            padding: 0.5rem 0;
+        }
+        
+        .nav-item:hover > .nav-dropdown-menu { display: block; }
+        
+        .nav-dropdown-menu a {
+            display: block;
+            padding: 0.6rem 1.2rem;
+            color: var(--text-primary);
+            text-decoration: none;
+            font-size: 0.95rem;
+            transition: background-color 0.2s;
+        }
+        .nav-dropdown-menu a:hover { background-color: var(--bg-light); color: var(--accent-color); }
+
+        /* Nested Dropdowns */
+        .nav-dropdown-submenu { position: relative; }
+        .nav-dropdown-submenu > .nav-dropdown-menu {
+            top: 0;
+            left: 100%;
+            margin-top: -5px;
+        }
+        .nav-dropdown-submenu:hover > .nav-dropdown-menu { display: block; }
+        
+        /* Arrow indicators */
+        .has-children::after {
+            content: '\f078'; /* fa-chevron-down */
+            font-family: 'Font Awesome 6 Free';
+            font-weight: 900;
+            font-size: 0.7rem;
+            margin-left: 5px;
+        }
+        .nav-dropdown-menu .has-children::after {
+            content: '\f054'; /* fa-chevron-right */
+            float: right;
+            margin-top: 4px;
+        }
     </style>
 </head>
 <body>
@@ -125,33 +241,74 @@ if (isset($_SESSION['user_id']) && isset($pdo)) {
             <a href="index.php" class="logo">MTP Flex Store</a>
             <nav class="header-nav">
                 <a href="index.php">Home</a>
-                <a href="store.php">Shop</a>
-                <a href="store.php?category=1">Men</a>
-                <a href="store.php?category=2">Women</a>
-                <a href="store.php?category=3">Kids</a>
-                <a href="store.php?category=4">Accessories</a>
+
+                <!-- Shop Dropdown -->
+                <div class="nav-item">
+                    <a href="store.php" class="has-children">Shop</a>
+                    <div class="nav-dropdown-menu">
+                        <a href="store.php">All Products</a>
+                        <?php if (!empty($shop_all_cats)): ?>
+                            <?php foreach ($shop_all_cats as $category): ?>
+                                <a href="store.php?category=<?= $category['id'] ?>"><?= htmlspecialchars($category['name']) ?></a>
+                            <?php endforeach; ?>
+                        <?php endif; ?>
+                    </div>
+                </div>
+
+                <!-- Accessories Link -->
+                <?php if ($accessories_group): ?>
+                    <a href="store.php?category=<?= $accessories_group['id'] ?>"><?= htmlspecialchars($accessories_group['name']) ?></a>
+                <?php endif; ?>
+
+                <!-- Apparel Dropdown -->
+                <?php if (!empty($apparel_group['children'])): ?>
+                    <div class="nav-item">
+                        <a href="#" class="has-children"><?= $apparel_group['name'] ?></a>
+                        <div class="nav-dropdown-menu"><?php render_nav_dropdown_items($apparel_group['children']); ?></div>
+                    </div>
+                <?php endif; ?>
+
+                <!-- Kid's Dropdown -->
+                <?php if ($kids_group): ?>
+                    <div class="nav-item">
+                        <a href="store.php?category=<?= $kids_group['id'] ?>" class="has-children"><?= htmlspecialchars($kids_group['name']) ?></a>
+                        <div class="nav-dropdown-menu"><?php if (!empty($kids_group['children'])) render_nav_dropdown_items($kids_group['children']); ?></div>
+                    </div>
+                <?php endif; ?>
+
+                <!-- Seasonal Dropdown -->
+                <?php if ($seasonal_group): ?>
+                    <div class="nav-item">
+                        <a href="store.php?category=<?= $seasonal_group['id'] ?>" class="has-children"><?= htmlspecialchars($seasonal_group['name']) ?></a>
+                        <div class="nav-dropdown-menu"><?php if (!empty($seasonal_group['children'])) render_nav_dropdown_items($seasonal_group['children']); ?></div>
+                    </div>
+                <?php endif; ?>
             </nav>
             <div class="header-icons">
                 <a href="#"><i class="fas fa-search"></i></a>
                 <a href="cart.php"><i class="fas fa-cart-shopping"></i> (<?= $cart_item_count ?>)</a>
-                <?php if (isset($_SESSION['user_id'])): ?>
-                    <div class="dropdown">
-                        <a href="#" class="dropbtn" style="position: relative;">
-                            <i class="fas fa-user-circle"></i>
-                            <?php if ($unread_count > 0): ?>
-                                <span class="notification-badge"><?= $unread_count > 99 ? '99+' : $unread_count ?></span>
-                            <?php endif; ?>
-                        </a>
-                        <div class="dropdown-content">
+                <div class="dropdown">
+                    <a href="#" class="dropbtn" style="position: relative;">
+                        <i class="fas fa-user-circle"></i>
+                        <?php if (isset($_SESSION['user_id']) && $unread_count > 0): ?>
+                            <span class="notification-badge"><?= $unread_count > 99 ? '99+' : $unread_count ?></span>
+                        <?php endif; ?>
+                    </a>
+                    <div class="dropdown-content">
+                        <?php if (isset($_SESSION['user_id'])): ?>
                             <a href="profile.php">My Profile</a>
                             <a href="profile.php">My Orders</a>
+                            <a href="wishlist.php">Wishlist</a>
                             <a href="messages.php">My Messages</a>
                             <a href="logout.php">Sign Out</a>
-                        </div>
+                        <?php else: ?>
+                            <a href="login.php">Login</a>
+                            <a href="register.php">Register</a>
+                            <a href="profile.php">Orders</a>
+                            <a href="wishlist.php">Wishlist</a>
+                        <?php endif; ?>
                     </div>
-                <?php else: ?>
-                    <a href="login.php">Login</a>
-                <?php endif; ?>
+                </div>
             </div>
         </div>
     </header>

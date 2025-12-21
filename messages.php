@@ -15,25 +15,55 @@ $user_id = $_SESSION['user_id'];
 $messages = [];
 $error = '';
 $filter = $_GET['filter'] ?? 'all';
+$page = isset($_GET['page']) && is_numeric($_GET['page']) ? (int)$_GET['page'] : 1;
+$per_page = 5; // Number of messages per page
+$total_pages = 1;
 
 try {
-    // Build query based on filter
+    // 1. Get total count for pagination
+    $count_sql = "SELECT COUNT(*) FROM messages WHERE user_id = :user_id";
+    if ($filter === 'read') {
+        $count_sql .= " AND is_read = 1";
+    } elseif ($filter === 'unread') {
+        $count_sql .= " AND is_read = 0";
+    }
+    $count_stmt = $pdo->prepare($count_sql);
+    $count_stmt->execute(['user_id' => $user_id]);
+    $total_messages = $count_stmt->fetchColumn();
+    
+    $total_pages = ceil($total_messages / $per_page);
+    if ($page < 1) $page = 1;
+    if ($page > $total_pages && $total_pages > 0) $page = $total_pages;
+    $offset = ($page - 1) * $per_page;
+
+    // 2. Fetch messages with limit and offset
     $sql = "SELECT * FROM messages WHERE user_id = :user_id";
     if ($filter === 'read') {
         $sql .= " AND is_read = 1";
     } elseif ($filter === 'unread') {
         $sql .= " AND is_read = 0";
     }
-    $sql .= " ORDER BY created_at DESC";
+    $sql .= " ORDER BY created_at DESC LIMIT :limit OFFSET :offset";
 
     $stmt = $pdo->prepare($sql);
-    $stmt->execute(['user_id' => $user_id]);
+    $stmt->bindValue(':user_id', $user_id, PDO::PARAM_INT);
+    $stmt->bindValue(':limit', $per_page, PDO::PARAM_INT);
+    $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
+    $stmt->execute();
     $messages = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-    // After fetching, mark displayed unread messages as read (unless we are only viewing 'read' messages)
-    if ($filter !== 'read') {
-        $updateStmt = $pdo->prepare("UPDATE messages SET is_read = 1 WHERE user_id = :user_id AND is_read = 0");
-        $updateStmt->execute(['user_id' => $user_id]);
+    // 3. Mark ONLY displayed unread messages as read
+    if ($filter !== 'read' && !empty($messages)) {
+        $ids_to_mark = [];
+        foreach ($messages as $m) {
+            if ($m['is_read'] == 0) $ids_to_mark[] = $m['id'];
+        }
+        
+        if (!empty($ids_to_mark)) {
+            $placeholders = implode(',', array_fill(0, count($ids_to_mark), '?'));
+            $updateStmt = $pdo->prepare("UPDATE messages SET is_read = 1 WHERE id IN ($placeholders)");
+            $updateStmt->execute($ids_to_mark);
+        }
     }
 
 } catch (PDOException $e) {
@@ -147,6 +177,19 @@ require_once __DIR__ . DIRECTORY_SEPARATOR . 'store_header.php';
     }
     .filter-btn:hover { background-color: #d1d5db; color: var(--text-primary); }
     .filter-btn.active { background-color: var(--primary-color); color: white; }
+
+    .pagination { display: flex; justify-content: center; gap: 0.5rem; margin-top: 2rem; }
+    .page-link {
+        padding: 0.5rem 1rem;
+        border: 1px solid var(--border-color);
+        border-radius: 6px;
+        text-decoration: none;
+        color: var(--text-primary);
+        background: white;
+        transition: all 0.2s;
+    }
+    .page-link:hover { background-color: var(--bg-light); border-color: var(--accent-color); color: var(--accent-color); }
+    .page-link.active { background-color: var(--primary-color); color: white; border-color: var(--primary-color); }
 </style>
 
 <div class="container messages-container">
@@ -179,6 +222,22 @@ require_once __DIR__ . DIRECTORY_SEPARATOR . 'store_header.php';
                 </div>
             </div>
         <?php endforeach; ?>
+
+        <?php if ($total_pages > 1): ?>
+            <div class="pagination">
+                <?php if ($page > 1): ?>
+                    <a href="?filter=<?= htmlspecialchars($filter) ?>&page=<?= $page - 1 ?>" class="page-link">&laquo; Prev</a>
+                <?php endif; ?>
+                
+                <?php for ($i = 1; $i <= $total_pages; $i++): ?>
+                    <a href="?filter=<?= htmlspecialchars($filter) ?>&page=<?= $i ?>" class="page-link <?= $i === $page ? 'active' : '' ?>"><?= $i ?></a>
+                <?php endfor; ?>
+                
+                <?php if ($page < $total_pages): ?>
+                    <a href="?filter=<?= htmlspecialchars($filter) ?>&page=<?= $page + 1 ?>" class="page-link">Next &raquo;</a>
+                <?php endif; ?>
+            </div>
+        <?php endif; ?>
     <?php endif; ?>
 </div>
 

@@ -83,7 +83,7 @@ require_once __DIR__ . DIRECTORY_SEPARATOR . 'store_header.php';
     color: var(--text-secondary);
     margin-bottom: 2rem;
 }
-.add-to-cart-form { display: flex; gap: 1rem; align-items: center; }
+.action-buttons { display: flex; gap: 1rem; align-items: center; }
 .add-to-cart-form input[type="number"] {
     width: 80px;
     padding: 0.75rem;
@@ -104,6 +104,19 @@ require_once __DIR__ . DIRECTORY_SEPARATOR . 'store_header.php';
     transition: background-color 0.2s;
 }
 .btn-add-cart:hover { background-color: #374151; }
+.btn-wishlist {
+    padding: 0.75rem 1.5rem;
+    background-color: transparent;
+    color: var(--primary-color);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-decoration: none;
+}
+.btn-wishlist:hover { background-color: var(--bg-light); border-color: var(--primary-color); }
 .error-message { text-align: center; padding: 4rem; }
 </style>
 
@@ -123,11 +136,16 @@ require_once __DIR__ . DIRECTORY_SEPARATOR . 'store_header.php';
                 <h2><?= htmlspecialchars($product['name']) ?></h2>
                 <p class="price">₦<?= number_format($product['price'], 2) ?></p>
                 <p class="description"><?= nl2br(htmlspecialchars($product['description'])) ?></p>
-                <form action="cart_add.php" method="POST" class="add-to-cart-form">
-                    <input type="hidden" name="id" value="<?= $product['id'] ?>">
-                    <input type="number" name="quantity" value="1" min="1" aria-label="Quantity">
-                    <button type="submit" class="btn-add-cart"><i class="fas fa-cart-plus"></i> Add to Cart</button>
-                </form>
+                <div class="action-buttons">
+                    <form action="cart_add.php" method="POST" style="display: contents;">
+                        <input type="hidden" name="id" value="<?= $product['id'] ?>">
+                        <input type="number" name="quantity" value="1" min="1" aria-label="Quantity">
+                        <button type="submit" class="btn-add-cart"><i class="fas fa-cart-plus"></i> Add to Cart</button>
+                    </form>
+                    <?php if (isset($_SESSION['user_id'])): ?>
+                        <a href="wishlist_add.php?id=<?= $product['id'] ?>" class="btn-wishlist"><i class="far fa-heart"></i> Add to Wishlist</a>
+                    <?php endif; ?>
+                </div>
             </div>
         </div>
     <?php endif; ?>

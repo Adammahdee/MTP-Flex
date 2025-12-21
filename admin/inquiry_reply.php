@@ -16,6 +16,11 @@ if (!$inquiry) {
     exit;
 }
 
+// Mark inquiry as read when viewed
+if (isset($inquiry['is_read']) && $inquiry['is_read'] == 0) {
+    $pdo->prepare("UPDATE contact_inquiries SET is_read = 1 WHERE id = ?")->execute([$id]);
+}
+
 $success = '';
 $error = '';
 

@@ -5,6 +5,11 @@ $inquiries = [];
 $error = '';
 
 try {
+    // Ensure is_read column exists (Schema Migration)
+    try {
+        $pdo->exec("ALTER TABLE contact_inquiries ADD COLUMN is_read TINYINT(1) DEFAULT 0");
+    } catch (PDOException $e) { /* Ignore if column exists */ }
+
     $stmt = $pdo->query("SELECT * FROM contact_inquiries ORDER BY created_at DESC");
     $inquiries = $stmt->fetchAll(PDO::FETCH_ASSOC);
 } catch (PDOException $e) {
@@ -44,7 +49,7 @@ require_once 'assets/header.php';
                         <tr><td colspan="5" class="text-center">No inquiries found.</td></tr>
                     <?php else: ?>
                         <?php foreach ($inquiries as $inquiry): ?>
-                        <tr>
+                        <tr class="<?= ($inquiry['is_read'] ?? 0) == 0 ? 'table-active fw-bold' : '' ?>">
                             <td>#<?= $inquiry['id'] ?></td>
                             <td>
                                 <strong><?= htmlspecialchars($inquiry['name']) ?></strong><br>
