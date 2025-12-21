@@ -141,15 +141,15 @@ require_once __DIR__ . DIRECTORY_SEPARATOR . 'store_header.php';
                     <div class="label">Men</div>
                 </a>
                 <a href="store.php?category=2" class="category-card">
-                    <img src="https://images.unsplash.com/photo-1581044777550-4cfa6ce6702e?auto=format&fit=crop&w=600&q=80" alt="Women's Fashion">
+                    <img src="https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=600&q=80" alt="Women's Fashion">
                     <div class="label">Women</div>
                 </a>
                 <a href="store.php?category=3" class="category-card">
-                    <img src="https://images.unsplash.com/photo-1514090463143-5ca260c41ba4?auto=format&fit=crop&w=600&q=80" alt="Kids' Fashion">
+                    <img src="https://images.unsplash.com/photo-1519457431-44ccd64a579b?auto=format&fit=crop&w=600&q=80" alt="Kids' Fashion">
                     <div class="label">Kids</div>
                 </a>
                 <a href="store.php?category=4" class="category-card">
-                    <img src="https://images.unsplash.com/photo-1576053139998-0135de455117?auto=format&fit=crop&w=600&q=80" alt="Accessories">
+                    <img src="https://images.unsplash.com/photo-1511556820780-d912e42b4980?auto=format&fit=crop&w=600&q=80" alt="Accessories">
                     <div class="label">Accessories</div>
                 </a>
             </div>
