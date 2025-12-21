@@ -297,7 +297,7 @@ if (!empty($nav_categories)) {
                     <div class="dropdown-content">
                         <?php if (isset($_SESSION['user_id'])): ?>
                             <a href="profile.php">My Profile</a>
-                            <a href="profile.php">My Orders</a>
+                            <a href="profile.php#recent-orders">My Orders</a>
                             <a href="wishlist.php">Wishlist</a>
                             <a href="messages.php">My Messages</a>
                             <a href="logout.php">Sign Out</a>

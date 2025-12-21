@@ -13,6 +13,18 @@ if ($reason === 'timeout') {
     $message = 'You must be logged in as an administrator to access that page.';
 }
 
+// Clear Remember Me (DB and Cookie)
+if (isset($_SESSION['user_id'])) {
+    require_once __DIR__ . '/config/db.php';
+    try {
+        $stmt = $pdo->prepare("UPDATE users SET remember_token = NULL, token_expiry = NULL WHERE id = ?");
+        $stmt->execute([$_SESSION['user_id']]);
+    } catch (Exception $e) { /* Ignore */ }
+}
+
+if (isset($_COOKIE['remember_me'])) {
+    setcookie('remember_me', '', time() - 3600, "/", "", false, true);
+}
 
 // Unset all session variables
 $_SESSION = [];

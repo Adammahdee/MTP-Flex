@@ -9,12 +9,6 @@ if (!isset($_SESSION['user_id'])) {
     exit;
 }
 
-// Redirect admins away from this user-specific page
-if (isset($_SESSION['is_admin']) && $_SESSION['is_admin'] == 1) {
-    header("Location: admin/dashboard.php");
-    exit;
-}
-
 require_once __DIR__ . DIRECTORY_SEPARATOR . 'config' . DIRECTORY_SEPARATOR . 'db.php';
 
 $user_id = $_SESSION['user_id'];

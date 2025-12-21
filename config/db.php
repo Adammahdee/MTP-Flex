@@ -68,3 +68,34 @@ function get_pdo_connection(string $user, string $pass): PDO
 // By default, scripts that include this file will get the low-privilege user connection.
 // Admin scripts must explicitly request the admin connection.
 $pdo = get_pdo_connection(DB_USER_USER, DB_USER_PASS);
+
+/**
+ * Checks for a "Remember Me" cookie and logs the user in if valid.
+ *
+ * @param PDO $pdo The database connection.
+ */
+function check_remember_me($pdo) {
+    if (isset($_SESSION['user_id'])) {
+        return; // Already logged in
+    }
+
+    if (isset($_COOKIE['remember_me'])) {
+        $parts = explode(':', $_COOKIE['remember_me']);
+        if (count($parts) === 2) {
+            list($user_id, $token) = $parts;
+            try {
+                $stmt = $pdo->prepare("SELECT id, name, is_admin, remember_token, token_expiry FROM users WHERE id = ?");
+                $stmt->execute([$user_id]);
+                $user = $stmt->fetch(PDO::FETCH_ASSOC);
+
+                if ($user && $user['remember_token'] && strtotime($user['token_expiry']) > time()) {
+                    if (hash_equals($user['remember_token'], hash('sha256', $token))) {
+                        $_SESSION['user_id'] = $user['id'];
+                        $_SESSION['user_name'] = $user['name'];
+                        $_SESSION['is_admin'] = $user['is_admin'];
+                    }
+                }
+            } catch (Exception $e) { /* Ignore errors during auto-login */ }
+        }
+    }
+}

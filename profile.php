@@ -3,19 +3,16 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
+require_once __DIR__ . "/config/db.php";
+
+// Attempt auto-login via cookie before redirecting
+check_remember_me($pdo);
+
 // Redirect non-logged-in users to the login page
 if (!isset($_SESSION['user_id'])) {
     header("Location: login.php?redirect=profile");
     exit;
 }
-
-// If an admin lands on this page, redirect them to the admin dashboard
-if (isset($_SESSION['is_admin']) && $_SESSION['is_admin'] == 1) {
-    header("Location: admin/dashboard.php");
-    exit;
-}
-
-require_once __DIR__ . "/config/db.php";
 
 $user_id = $_SESSION['user_id'];
 $user_name = $_SESSION['user_name'];
@@ -219,7 +216,7 @@ require_once __DIR__ . DIRECTORY_SEPARATOR . 'store_header.php';
             </section>
 
             <!-- Order History Card -->
-            <section class="dashboard-card">
+            <section id="recent-orders" class="dashboard-card">
                 <div class="card-header">
                     <h2 class="card-title"><i class="fas fa-shopping-bag"></i> Recent Orders</h2>
                 </div>

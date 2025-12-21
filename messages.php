@@ -72,26 +72,9 @@ try {
         // Table doesn't exist, create it automatically
         try {
             $pdo->exec("
-            CREATE TABLE IF NOT EXISTS contact_inquiries (
-                id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-                user_id INT UNSIGNED NULL,
-                name VARCHAR(255) NOT NULL,
-                email VARCHAR(255) NOT NULL,
-                subject VARCHAR(255) NOT NULL,
-                message TEXT NOT NULL,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-
-                CONSTRAINT fk_contact_inquiries_users
-                FOREIGN KEY (user_id)
-                REFERENCES users(id)
-                ON DELETE SET NULL
-                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-            ");
-            
-            $pdo->exec("
                 CREATE TABLE IF NOT EXISTS messages (
-                    id INT AUTO_INCREMENT PRIMARY KEY,
-                    user_id INT NOT NULL,
+                    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                    user_id INT UNSIGNED NOT NULL,
                     subject VARCHAR(255) NOT NULL,
                     body TEXT NOT NULL,
                     is_read TINYINT(1) DEFAULT 0,

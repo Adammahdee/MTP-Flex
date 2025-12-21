@@ -35,8 +35,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             try {
                 // Ensure messages table exists
                 $pdo->exec("CREATE TABLE IF NOT EXISTS messages (
-                    id INT AUTO_INCREMENT PRIMARY KEY,
-                    user_id INT NOT NULL,
+                    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                    user_id INT UNSIGNED NOT NULL,
                     subject VARCHAR(255) NOT NULL,
                     body TEXT NOT NULL,
                     is_read TINYINT(1) DEFAULT 0,

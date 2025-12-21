@@ -5,11 +5,7 @@ if (session_status() === PHP_SESSION_NONE) {
 
 // If user is already logged in, redirect them
 if (isset($_SESSION['user_id'])) {
-    if (isset($_SESSION['is_admin']) && $_SESSION['is_admin'] == 1) {
-        header("Location: admin/dashboard.php");
-    } else {
-        header("Location: profile.php");
-    }
+    header("Location: profile.php");
     exit;
 }
 

@@ -38,8 +38,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         try {
             // Create table if not exists
             $pdo->exec("CREATE TABLE IF NOT EXISTS contact_inquiries (
-                id INT AUTO_INCREMENT PRIMARY KEY,
-                user_id INT NULL,
+                id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                user_id INT UNSIGNED NULL,
                 name VARCHAR(255) NOT NULL,
                 email VARCHAR(255) NOT NULL,
                 subject VARCHAR(255) NOT NULL,
