@@ -97,6 +97,9 @@ require_once __DIR__ . DIRECTORY_SEPARATOR . 'store_header.php';
                 <div class="form-group">
                     <label for="password">Password</label>
                     <input type="password" id="password" name="password" class="form-control" required>
+                    <div style="text-align: right; margin-top: 0.5rem;">
+                        <a href="forgot_password.php" style="font-size: 0.9rem; color: var(--accent-color); text-decoration: none;">Forgot Password?</a>
+                    </div>
                 </div>
                 
                 <button type="submit" class="btn-primary">Login</button>

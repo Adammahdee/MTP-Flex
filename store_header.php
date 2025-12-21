@@ -3,6 +3,17 @@
 // It assumes a session has been started and cart count calculated by the calling page.
 
 $cart_item_count = $cart_item_count ?? 0; // Null coalesce for safety
+
+$unread_count = 0;
+if (isset($_SESSION['user_id']) && isset($pdo)) {
+    try {
+        $stmt = $pdo->prepare("SELECT COUNT(*) FROM messages WHERE user_id = ? AND is_read = 0");
+        $stmt->execute([$_SESSION['user_id']]);
+        $unread_count = $stmt->fetchColumn();
+    } catch (PDOException $e) {
+        // Table might not exist yet, ignore error
+    }
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -69,6 +80,43 @@ $cart_item_count = $cart_item_count ?? 0; // Null coalesce for safety
         .alert-danger { background-color: #fee2e2; color: #991b1b; border-color: #fecaca; }
         .text-link { display: block; text-align: center; margin-top: 1.5rem; color: var(--accent-color); text-decoration: none; }
 
+        /* Dropdown Menu */
+        .dropdown { position: relative; display: inline-block; }
+        .dropdown-content {
+            display: none;
+            position: absolute;
+            right: 0;
+            background-color: var(--card-bg);
+            min-width: 200px;
+            box-shadow: var(--shadow);
+            border-radius: 8px;
+            z-index: 1000;
+            border: 1px solid var(--border-color);
+            overflow: hidden;
+        }
+        .dropdown-content a {
+            color: var(--text-primary);
+            padding: 12px 16px;
+            text-decoration: none;
+            display: block;
+            font-size: 0.95rem;
+            transition: background-color 0.2s;
+        }
+        .dropdown-content a:hover { background-color: var(--bg-light); color: var(--accent-color); }
+        .dropdown:hover .dropdown-content { display: block; }
+
+        .notification-badge {
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            background-color: #ef4444;
+            color: white;
+            border-radius: 50%;
+            padding: 2px 5px;
+            font-size: 0.65rem;
+            font-weight: bold;
+            border: 2px solid var(--card-bg);
+        }
     </style>
 </head>
 <body>
@@ -85,9 +133,22 @@ $cart_item_count = $cart_item_count ?? 0; // Null coalesce for safety
             </nav>
             <div class="header-icons">
                 <a href="#"><i class="fas fa-search"></i></a>
-                <a href="cart.php"><i class="fas fa-shopping-cart"></i> (<?= $cart_item_count ?>)</a>
+                <a href="cart.php"><i class="fas fa-cart-shopping"></i> (<?= $cart_item_count ?>)</a>
                 <?php if (isset($_SESSION['user_id'])): ?>
-                    <a href="profile.php">My Account</a>
+                    <div class="dropdown">
+                        <a href="#" class="dropbtn" style="position: relative;">
+                            <i class="fas fa-user-circle"></i>
+                            <?php if ($unread_count > 0): ?>
+                                <span class="notification-badge"><?= $unread_count > 99 ? '99+' : $unread_count ?></span>
+                            <?php endif; ?>
+                        </a>
+                        <div class="dropdown-content">
+                            <a href="profile.php">My Profile</a>
+                            <a href="profile.php">My Orders</a>
+                            <a href="messages.php">My Messages</a>
+                            <a href="logout.php">Sign Out</a>
+                        </div>
+                    </div>
                 <?php else: ?>
                     <a href="login.php">Login</a>
                 <?php endif; ?>

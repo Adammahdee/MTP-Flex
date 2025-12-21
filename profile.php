@@ -11,7 +11,7 @@ if (!isset($_SESSION['user_id'])) {
 
 // If an admin lands on this page, redirect them to the admin dashboard
 if (isset($_SESSION['is_admin']) && $_SESSION['is_admin'] == 1) {
-    header("Location: ../admin/dashboard.php");
+    header("Location: admin/dashboard.php");
     exit;
 }
 
@@ -178,7 +178,7 @@ require_once __DIR__ . DIRECTORY_SEPARATOR . 'store_header.php';
     .empty-state i { font-size: 3rem; margin-bottom: 1rem; color: #d1d5db; }
 </style>
 
-<main class="container">
+<div class="container">
     <?php if ($error): ?>
         <div class="alert alert-danger" style="margin-top: 2rem;"><?= htmlspecialchars($error) ?></div>
     <?php endif; ?>
@@ -243,7 +243,7 @@ require_once __DIR__ . DIRECTORY_SEPARATOR . 'store_header.php';
                             <tbody>
                                 <?php foreach ($orders as $order): ?>
                                     <tr>
-                                        <td><strong>#<?= htmlspecialchars($order['id']) ?></strong></td>
+                                        <td><a href="order_details.php?id=<?= $order['id'] ?>" style="text-decoration: none; font-weight: bold; color: var(--primary-color);">#<?= htmlspecialchars($order['id']) ?></a></td>
                                         <td><?= date("M d, Y", strtotime($order['created_at'])) ?></td>
                                         <td style="font-weight: 600;">₦<?= number_format($order['total_amount'], 2) ?></td>
                                         <td>
