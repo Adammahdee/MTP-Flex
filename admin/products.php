@@ -26,6 +26,14 @@ function get_product_status_badge($status) {
 }
 
 try {
+    // Schema Update: Ensure category_id exists and is a foreign key
+    try {
+        $pdo->exec("ALTER TABLE products ADD COLUMN category_id INT NULL");
+    } catch (PDOException $e) { /* Ignore */ }
+    try {
+        $pdo->exec("ALTER TABLE products ADD CONSTRAINT fk_product_category FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE SET NULL");
+    } catch (PDOException $e) { /* Ignore */ }
+
     // Fetch all products with their category names
     $stmt = $pdo->prepare("
         SELECT 
