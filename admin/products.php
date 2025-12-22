@@ -26,14 +26,6 @@ function get_product_status_badge($status) {
 }
 
 try {
-    // Schema Update: Ensure category_id exists and is a foreign key
-    try {
-        $pdo->exec("ALTER TABLE products ADD COLUMN category_id INT NULL");
-    } catch (PDOException $e) { /* Ignore */ }
-    try {
-        $pdo->exec("ALTER TABLE products ADD CONSTRAINT fk_product_category FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE SET NULL");
-    } catch (PDOException $e) { /* Ignore */ }
-
     // Fetch all products with their category names
     $stmt = $pdo->prepare("
         SELECT 
@@ -50,7 +42,7 @@ try {
     $products = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 } catch (PDOException $e) {
-    $error_message = "The 'products' table is missing. Please run the SQL creation script.";
+    $error_message = "Database Error: " . $e->getMessage();
 }
 
 ?>
@@ -75,6 +67,7 @@ try {
         <div class="row" style="justify-content: space-between; align-items: center; margin-bottom: 20px;">
             <h3 style="margin: 0; padding: 0 10px;">Product List (<?= count($products) ?>)</h3>
             <div style="padding: 0 10px;">
+                <a href="inventory_reports.php" class="btn btn-warning"><i class="fas fa-exclamation-triangle"></i> Low Stock Alerts</a>
                 <a href="product_add.php" class="btn btn-primary"><i class="fas fa-plus"></i> Add New Product</a>
             </div>
         </div>
