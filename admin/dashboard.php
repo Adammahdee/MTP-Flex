@@ -10,6 +10,8 @@ $stats = [
     'users' => 0,
 ];
 $recent_orders = [];
+$chart_labels = [];
+$chart_values = [];
 $error = '';
 
 try {
@@ -28,6 +30,23 @@ try {
         LIMIT 5
     ");
     $recent_orders = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    // Fetch Sales Chart Data (Last 30 Days)
+    $chart_stmt = $pdo->query("
+        SELECT DATE(created_at) as date, SUM(total_amount) as total 
+        FROM orders 
+        WHERE status = 'Completed' AND created_at >= DATE_SUB(CURDATE(), INTERVAL 30 DAY) 
+        GROUP BY DATE(created_at) 
+        ORDER BY date ASC
+    ");
+    $sales_data = $chart_stmt->fetchAll(PDO::FETCH_KEY_PAIR);
+
+    // Fill in missing days with 0
+    for ($i = 29; $i >= 0; $i--) {
+        $date = date('Y-m-d', strtotime("-$i days"));
+        $chart_labels[] = date('M d', strtotime($date));
+        $chart_values[] = $sales_data[$date] ?? 0;
+    }
 
 } catch (PDOException $e) {
     $error = "Database error: " . $e->getMessage();
@@ -92,6 +111,49 @@ require_once 'assets/header.php';
         </div>
     </div>
 </div>
+
+<div class="card mb-4">
+    <div class="card-header">
+        <h5 class="mb-0">Sales Overview (Last 30 Days)</h5>
+    </div>
+    <div class="card-body">
+        <canvas id="salesChart" style="max-height: 300px;"></canvas>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const ctx = document.getElementById('salesChart').getContext('2d');
+        const salesChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: <?= json_encode($chart_labels) ?>,
+                datasets: [{
+                    label: 'Revenue (₦)',
+                    data: <?= json_encode($chart_values) ?>,
+                    borderColor: '#0d6efd',
+                    backgroundColor: 'rgba(13, 110, 253, 0.1)',
+                    borderWidth: 2,
+                    fill: true,
+                    tension: 0.3
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            callback: function(value) { return '₦' + value; }
+                        }
+                    }
+                }
+            }
+        });
+    });
+</script>
 
 <div class="card">
     <div class="card-header d-flex justify-content-between align-items-center">

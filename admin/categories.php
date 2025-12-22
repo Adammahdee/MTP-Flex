@@ -56,32 +56,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_category'])) {
 // --- Fetch data for display ---
 $categories = [];
 try {
-    // Ensure table and audit columns exist
-    $pdo->exec("CREATE TABLE IF NOT EXISTS categories (id INT AUTO_INCREMENT PRIMARY KEY, name VARCHAR(255) NOT NULL UNIQUE, description TEXT NULL) ENGINE=InnoDB;");
-    
-    try {
-        $pdo->exec("ALTER TABLE categories ADD COLUMN description TEXT NULL");
-    } catch (PDOException $e) { /* Ignore if column exists */ }
-    try {
-        $pdo->exec("ALTER TABLE categories ADD COLUMN created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP");
-    } catch (PDOException $e) { /* Ignore if column exists */ }
-    try {
-        $pdo->exec("ALTER TABLE categories ADD COLUMN updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP");
-    } catch (PDOException $e) { /* Ignore if column exists */ }
-    
-    // Schema Update: Hierarchical Categories
-    try {
-        $pdo->exec("ALTER TABLE categories ADD COLUMN parent_id INT NULL");
-    } catch (PDOException $e) { /* Ignore if column exists */ }
-    try {
-        $pdo->exec("ALTER TABLE categories ADD CONSTRAINT fk_parent_category FOREIGN KEY (parent_id) REFERENCES categories(id) ON DELETE CASCADE");
-    } catch (PDOException $e) { /* Ignore if constraint exists */ }
-    try {
-        // Drop simple unique index on name to allow same name in different subcategories (e.g. Men > Shoes, Women > Shoes)
-        $pdo->exec("ALTER TABLE categories DROP INDEX name"); 
-        $pdo->exec("ALTER TABLE categories ADD UNIQUE `uq_category_name_parent` (name, parent_id)");
-    } catch (PDOException $e) { /* Ignore */ }
-
     $stmt = $pdo->query("
         SELECT c.*, (SELECT COUNT(*) FROM products p WHERE p.category_id = c.id) as product_count 
         FROM categories c 

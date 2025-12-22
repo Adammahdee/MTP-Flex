@@ -41,9 +41,8 @@ try {
     } else {
         // Fetch order items
         $items_stmt = $pdo->prepare("
-            SELECT oi.*, p.name AS product_name 
+            SELECT oi.*
             FROM order_items oi
-            JOIN products p ON oi.product_id = p.id
             WHERE oi.order_id = :order_id
         ");
         $items_stmt->execute(['order_id' => $order_id]);

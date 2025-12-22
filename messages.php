@@ -3,227 +3,217 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-// Redirect non-logged-in users
+require_once __DIR__ . '/config/db.php';
+
+// Redirect if not logged in
 if (!isset($_SESSION['user_id'])) {
-    header("Location: login.php?redirect=messages");
+    header("Location: login.php");
     exit;
 }
 
-require_once __DIR__ . DIRECTORY_SEPARATOR . 'config' . DIRECTORY_SEPARATOR . 'db.php';
-
 $user_id = $_SESSION['user_id'];
-$messages = [];
 $error = '';
-$filter = $_GET['filter'] ?? 'all';
-$page = isset($_GET['page']) && is_numeric($_GET['page']) ? (int)$_GET['page'] : 1;
-$per_page = 5; // Number of messages per page
+$success = '';
+$messages = [];
 $total_pages = 1;
+$page = isset($_GET['page']) && is_numeric($_GET['page']) ? (int)$_GET['page'] : 1;
+if ($page < 1) $page = 1;
+$limit = 10; // Messages per page
+$offset = ($page - 1) * $limit;
 
+// Handle Actions
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    if (isset($_POST['delete_id'])) {
+        $delete_id = filter_input(INPUT_POST, 'delete_id', FILTER_VALIDATE_INT);
+        if ($delete_id) {
+            try {
+                $stmt = $pdo->prepare("DELETE FROM messages WHERE id = ? AND user_id = ?");
+                $stmt->execute([$delete_id, $user_id]);
+                $success = "Message deleted successfully.";
+            } catch (PDOException $e) {
+                $error = "Failed to delete message.";
+            }
+        }
+    } elseif (isset($_POST['mark_read_id'])) {
+        $read_id = filter_input(INPUT_POST, 'mark_read_id', FILTER_VALIDATE_INT);
+        if ($read_id) {
+            try {
+                $stmt = $pdo->prepare("UPDATE messages SET is_read = 1 WHERE id = ? AND user_id = ?");
+                $stmt->execute([$read_id, $user_id]);
+                $success = "Message marked as read.";
+            } catch (PDOException $e) {
+                $error = "Failed to update message status.";
+            }
+        }
+    }
+}
+
+// Fetch Messages
 try {
-    // 1. Get total count for pagination
-    $count_sql = "SELECT COUNT(*) FROM messages WHERE user_id = :user_id";
-    if ($filter === 'read') {
-        $count_sql .= " AND is_read = 1";
-    } elseif ($filter === 'unread') {
-        $count_sql .= " AND is_read = 0";
-    }
-    $count_stmt = $pdo->prepare($count_sql);
-    $count_stmt->execute(['user_id' => $user_id]);
+    // Get total count for pagination
+    $count_stmt = $pdo->prepare("SELECT COUNT(*) FROM messages WHERE user_id = ?");
+    $count_stmt->execute([$user_id]);
     $total_messages = $count_stmt->fetchColumn();
-    
-    $total_pages = ceil($total_messages / $per_page);
-    if ($page < 1) $page = 1;
-    if ($page > $total_pages && $total_pages > 0) $page = $total_pages;
-    $offset = ($page - 1) * $per_page;
+    $total_pages = ceil($total_messages / $limit);
 
-    // 2. Fetch messages with limit and offset
-    $sql = "SELECT * FROM messages WHERE user_id = :user_id";
-    if ($filter === 'read') {
-        $sql .= " AND is_read = 1";
-    } elseif ($filter === 'unread') {
-        $sql .= " AND is_read = 0";
-    }
-    $sql .= " ORDER BY created_at DESC LIMIT :limit OFFSET :offset";
-
-    $stmt = $pdo->prepare($sql);
+    // We fetch all columns. The column containing the text might be 'message' or 'body'
+    $stmt = $pdo->prepare("SELECT * FROM messages WHERE user_id = :user_id ORDER BY created_at DESC LIMIT :limit OFFSET :offset");
     $stmt->bindValue(':user_id', $user_id, PDO::PARAM_INT);
-    $stmt->bindValue(':limit', $per_page, PDO::PARAM_INT);
+    $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
     $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
     $stmt->execute();
     $messages = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-    // 3. Mark ONLY displayed unread messages as read
-    if ($filter !== 'read' && !empty($messages)) {
-        $ids_to_mark = [];
-        foreach ($messages as $m) {
-            if ($m['is_read'] == 0) $ids_to_mark[] = $m['id'];
-        }
-        
-        if (!empty($ids_to_mark)) {
-            $placeholders = implode(',', array_fill(0, count($ids_to_mark), '?'));
-            $updateStmt = $pdo->prepare("UPDATE messages SET is_read = 1 WHERE id IN ($placeholders)");
-            $updateStmt->execute($ids_to_mark);
-        }
-    }
-
 } catch (PDOException $e) {
-    // Gracefully handle if the messages table doesn't exist yet
-    if ($e->getCode() === '42S02' || strpos($e->getMessage(), "doesn't exist") !== false) {
-        // Table doesn't exist, create it automatically
-        try {
-            $pdo->exec("
-                CREATE TABLE IF NOT EXISTS messages (
-                    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-                    user_id INT UNSIGNED NOT NULL,
-                    subject VARCHAR(255) NOT NULL,
-                    body TEXT NOT NULL,
-                    is_read TINYINT(1) DEFAULT 0,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-            ");
-            $messages = []; // Table is new, so no messages yet
-        } catch (PDOException $ex) {
-            $error = "Failed to initialize messages system: " . $ex->getMessage();
-        }
-    } elseif ($e->getCode() === '42S22' || strpos($e->getMessage(), "Unknown column") !== false) {
-        // Column missing, attempt to add it
-        try {
-            $pdo->exec("ALTER TABLE messages ADD COLUMN is_read TINYINT(1) DEFAULT 0");
-            // Refresh page to retry query
-            header("Location: messages.php?filter=" . urlencode($filter));
-            exit;
-        } catch (PDOException $ex) {
-             $error = "Database Error: Failed to update table schema. " . $ex->getMessage();
-        }
-    } else {
+    // If table doesn't exist yet, just show empty
+    if ($e->getCode() !== '42S02') {
         $error = "Database Error: " . $e->getMessage();
     }
 }
 
 $page_title = 'My Messages';
-require_once __DIR__ . DIRECTORY_SEPARATOR . 'store_header.php';
+require_once __DIR__ . '/store_header.php';
 ?>
 
 <style>
-    .messages-container {
-        max-width: 900px;
-        margin: 2rem auto;
-        padding: 0 1rem;
-    }
-    .messages-container h2 {
-        font-size: 1.8rem;
-        margin-bottom: 2rem;
-        color: var(--primary-color);
-    }
-    .message-item {
-        background: var(--card-bg);
+    .message-card {
         border: 1px solid var(--border-color);
         border-radius: 8px;
-        margin-bottom: 1.5rem;
-        box-shadow: var(--shadow);
-        transition: box-shadow 0.2s;
+        margin-bottom: 1rem;
+        transition: all 0.2s ease;
+        background: white;
     }
-    .message-item:hover {
-        box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1);
-    }
-    .message-item.unread {
+    .message-card.unread {
         border-left: 4px solid var(--accent-color);
+        background-color: #f8fafc;
     }
-    .message-header {
+    .message-card:hover {
+        box-shadow: var(--shadow);
+    }
+    details > summary {
+        list-style: none;
+        cursor: pointer;
+        padding: 1rem;
         display: flex;
         justify-content: space-between;
         align-items: center;
-        padding: 1rem 1.5rem;
+    }
+    details > summary::-webkit-details-marker { display: none; }
+    details[open] > summary {
         border-bottom: 1px solid var(--border-color);
         background-color: #f9fafb;
+        border-radius: 8px 8px 0 0;
     }
-    .message-header strong { font-size: 1.1rem; color: var(--text-primary); }
-    .message-header span { font-size: 0.85rem; color: var(--text-secondary); }
     .message-body {
         padding: 1.5rem;
-        line-height: 1.7;
-        color: var(--text-secondary);
-    }
-    .empty-state { text-align: center; padding: 3rem; background: var(--card-bg); border-radius: 12px; }
-    
-    .filter-bar { margin-bottom: 2rem; display: flex; gap: 0.5rem; }
-    .filter-btn { 
-        padding: 0.5rem 1rem; 
-        border-radius: 50px; 
-        text-decoration: none; 
-        font-size: 0.9rem; 
-        font-weight: 500; 
-        color: var(--text-secondary); 
-        background-color: #e5e7eb; 
-        transition: all 0.2s;
-    }
-    .filter-btn:hover { background-color: #d1d5db; color: var(--text-primary); }
-    .filter-btn.active { background-color: var(--primary-color); color: white; }
-
-    .pagination { display: flex; justify-content: center; gap: 0.5rem; margin-top: 2rem; }
-    .page-link {
-        padding: 0.5rem 1rem;
-        border: 1px solid var(--border-color);
-        border-radius: 6px;
-        text-decoration: none;
         color: var(--text-primary);
-        background: white;
-        transition: all 0.2s;
     }
-    .page-link:hover { background-color: var(--bg-light); border-color: var(--accent-color); color: var(--accent-color); }
-    .page-link.active { background-color: var(--primary-color); color: white; border-color: var(--primary-color); }
+    .badge-new {
+        background-color: #ef4444;
+        color: white;
+        font-size: 0.7rem;
+        padding: 2px 6px;
+        border-radius: 4px;
+        margin-right: 8px;
+        vertical-align: middle;
+    }
+    .pagination { display: flex; padding-left: 0; list-style: none; justify-content: center; margin-top: 1.5rem; }
+    .page-link { position: relative; display: block; color: var(--accent-color); text-decoration: none; background-color: #fff; border: 1px solid #dee2e6; transition: all 0.2s; padding: .5rem .75rem; margin: 0 2px; border-radius: 4px; }
+    .page-item.active .page-link { z-index: 3; color: #fff; background-color: var(--accent-color); border-color: var(--accent-color); }
+    .page-item.disabled .page-link { color: #6c757d; pointer-events: none; background-color: #f8f9fa; border-color: #dee2e6; }
+    .page-link:hover { background-color: #e9ecef; }
 </style>
 
-<div class="container messages-container">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
-        <h2 style="margin: 0;">My Messages</h2>
-    </div>
+<div class="container" style="padding-top: 2rem; padding-bottom: 2rem;">
+    <div class="row">
+        <div class="col-md-12">
+            <h2 class="mb-4"><i class="fas fa-envelope"></i> My Messages</h2>
+            
+            <?php if ($error): ?>
+                <div class="alert alert-danger"><?= htmlspecialchars($error) ?></div>
+            <?php endif; ?>
+            <?php if ($success): ?>
+                <div class="alert alert-success"><?= htmlspecialchars($success) ?></div>
+            <?php endif; ?>
 
-    <div class="filter-bar">
-        <a href="messages.php?filter=all" class="filter-btn <?= $filter === 'all' ? 'active' : '' ?>">All</a>
-        <a href="messages.php?filter=unread" class="filter-btn <?= $filter === 'unread' ? 'active' : '' ?>">Unread</a>
-        <a href="messages.php?filter=read" class="filter-btn <?= $filter === 'read' ? 'active' : '' ?>">Read</a>
-    </div>
-
-    <?php if ($error): ?>
-        <div class="alert alert-danger"><?= htmlspecialchars($error) ?></div>
-    <?php elseif (empty($messages)): ?>
-        <div class="empty-state"><p>You have no messages at the moment.</p></div>
-    <?php else: ?>
-        <?php foreach ($messages as $message): ?>
-            <div class="message-item <?= $message['is_read'] == 0 ? 'unread' : '' ?>">
-                <div class="message-header">
-                    <strong><?= htmlspecialchars($message['subject']) ?></strong>
-                    <span><?= date("M d, Y, g:i a", strtotime($message['created_at'])) ?></span>
+            <?php if (empty($messages)): ?>
+                <div class="alert alert-info">
+                    You have no messages in your inbox.
                 </div>
-                <div class="message-body">
-                    <?= nl2br(htmlspecialchars($message['body'])) ?>
-                    <div style="margin-top: 1.5rem;">
-                        <a href="contact_us.php?subject=Re: <?= urlencode($message['subject']) ?>" class="btn-secondary" style="padding: 0.5rem 1rem; text-decoration: none; border-radius: 6px; font-size: 0.9rem; color: white; display: inline-block;"><i class="fas fa-reply"></i> Reply</a>
-                    </div>
+            <?php else: ?>
+                <div class="messages-list">
+                    <?php foreach ($messages as $msg): ?>
+                        <?php 
+                            // COMPATIBILITY FIX: Check for 'message' column first, then fallback to 'body'
+                            // This resolves "Undefined array key 'body'" errors if the schema changed.
+                            $content = $msg['message'] ?? $msg['body'] ?? '';
+                            $subject = $msg['subject'] ?? '(No Subject)';
+                            $date = date('M d, Y h:i A', strtotime($msg['created_at']));
+                            $is_read = !empty($msg['is_read']);
+                        ?>
+                        <div class="message-card <?= !$is_read ? 'unread' : '' ?>">
+                            <details <?= !$is_read ? 'open' : '' ?>>
+                                <summary>
+                                    <div class="d-flex align-items-center">
+                                        <?php if (!$is_read): ?>
+                                            <span class="badge-new">NEW</span>
+                                        <?php else: ?>
+                                            <i class="fas fa-envelope-open text-muted me-2"></i>
+                                        <?php endif; ?>
+                                        <span class="<?= !$is_read ? 'fw-bold' : '' ?>"><?= htmlspecialchars($subject) ?></span>
+                                    </div>
+                                    <small class="text-muted"><?= $date ?></small>
+                                </summary>
+                                <div class="message-body">
+                                    <p style="white-space: pre-wrap; line-height: 1.6;"><?= htmlspecialchars($content) ?></p>
+                                    
+                                    <div class="d-flex justify-content-end gap-2 mt-3 pt-3 border-top">
+                                        <?php if (!$is_read): ?>
+                                            <form method="POST" style="display: inline;">
+                                                <input type="hidden" name="mark_read_id" value="<?= $msg['id'] ?>">
+                                                <button type="submit" class="btn btn-sm btn-outline-primary">
+                                                    <i class="fas fa-check"></i> Mark as Read
+                                                </button>
+                                            </form>
+                                        <?php endif; ?>
+                                        
+                                        <form method="POST" onsubmit="return confirm('Are you sure you want to delete this message?');" style="display: inline;">
+                                            <input type="hidden" name="delete_id" value="<?= $msg['id'] ?>">
+                                            <button type="submit" class="btn btn-sm btn-outline-danger">
+                                                <i class="fas fa-trash"></i> Delete
+                                            </button>
+                                        </form>
+                                    </div>
+                                </div>
+                            </details>
+                        </div>
+                    <?php endforeach; ?>
                 </div>
-            </div>
-        <?php endforeach; ?>
 
-        <?php if ($total_pages > 1): ?>
-            <div class="pagination">
-                <?php if ($page > 1): ?>
-                    <a href="?filter=<?= htmlspecialchars($filter) ?>&page=<?= $page - 1 ?>" class="page-link">&laquo; Prev</a>
+                <!-- Pagination Controls -->
+                <?php if ($total_pages > 1): ?>
+                    <nav aria-label="Messages pagination">
+                        <ul class="pagination">
+                            <li class="page-item <?= ($page <= 1) ? 'disabled' : '' ?>">
+                                <a class="page-link" href="?page=<?= $page - 1 ?>">Previous</a>
+                            </li>
+                            <?php for ($i = 1; $i <= $total_pages; $i++): ?>
+                                <li class="page-item <?= ($page == $i) ? 'active' : '' ?>">
+                                    <a class="page-link" href="?page=<?= $i ?>"><?= $i ?></a>
+                                </li>
+                            <?php endfor; ?>
+                            <li class="page-item <?= ($page >= $total_pages) ? 'disabled' : '' ?>">
+                                <a class="page-link" href="?page=<?= $page + 1 ?>">Next</a>
+                            </li>
+                        </ul>
+                    </nav>
                 <?php endif; ?>
-                
-                <?php for ($i = 1; $i <= $total_pages; $i++): ?>
-                    <a href="?filter=<?= htmlspecialchars($filter) ?>&page=<?= $i ?>" class="page-link <?= $i === $page ? 'active' : '' ?>"><?= $i ?></a>
-                <?php endfor; ?>
-                
-                <?php if ($page < $total_pages): ?>
-                    <a href="?filter=<?= htmlspecialchars($filter) ?>&page=<?= $page + 1 ?>" class="page-link">Next &raquo;</a>
-                <?php endif; ?>
+            <?php endif; ?>
+            
+            <div class="mt-4">
+                <a href="profile.php" class="btn btn-secondary"><i class="fas fa-arrow-left"></i> Back to Profile</a>
             </div>
-        <?php endif; ?>
-    <?php endif; ?>
+        </div>
+    </div>
 </div>
 
-<?php
-require_once __DIR__ . DIRECTORY_SEPARATOR . 'store_footer.php';
-?>
+<?php require_once __DIR__ . '/store_footer.php'; ?>

@@ -83,12 +83,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 // Insert item detail
                 $item_stmt = $pdo->prepare("
-                    INSERT INTO order_items (order_id, product_id, quantity, price_at_order)
-                    VALUES (:order_id, :product_id, :quantity, :price)
+                    INSERT INTO order_items (order_id, product_id, product_name, quantity, price_at_order)
+                    VALUES (:order_id, :product_id, :product_name, :quantity, :price)
                 ");
                 $item_stmt->execute([
                     'order_id' => $order_id,
                     'product_id' => $product_id,
+                    'product_name' => $item['name'],
                     'quantity' => $item['quantity'],
                     'price' => $item['price']
                 ]);

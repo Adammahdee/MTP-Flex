@@ -25,28 +25,57 @@ $success = '';
 $error = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $reply_body = trim($_POST['reply_body'] ?? '');
+    $reply_message = trim($_POST['reply_message'] ?? '');
     
-    if (empty($reply_body)) {
+    if (empty($reply_message)) {
         $error = "Reply message cannot be empty.";
     } else {
         if (!empty($inquiry['user_id'])) {
             // User is registered, send to internal inbox
             try {
-                // Ensure messages table exists
+                // 1. Ensure the messages table exists with a minimal valid schema.
                 $pdo->exec("CREATE TABLE IF NOT EXISTS messages (
-                    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-                    user_id INT UNSIGNED NOT NULL,
-                    subject VARCHAR(255) NOT NULL,
-                    body TEXT NOT NULL,
-                    is_read TINYINT(1) DEFAULT 0,
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    user_id INT NOT NULL,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
 
-                $stmt = $pdo->prepare("INSERT INTO messages (user_id, subject, body) VALUES (?, ?, ?)");
+                // Fix: Handle legacy 'body' column causing "Field 'body' doesn't have a default value" error
+                try {
+                    // Attempt to rename 'body' to 'message' (preserves data if only 'body' exists)
+                    $pdo->exec("ALTER TABLE messages CHANGE COLUMN body message TEXT NOT NULL");
+                } catch (PDOException $e) {
+                    // If rename failed (e.g., 'message' already exists), drop 'body' to resolve conflict
+                    try {
+                        $pdo->exec("ALTER TABLE messages DROP COLUMN body");
+                    } catch (PDOException $e2) { /* Ignore if body doesn't exist */ }
+                }
+
+                // 2. Self-healing: Add columns if they don't exist.
+                // This is safer than one big CREATE statement if the table exists in a partial state.
+                $columns_to_add = [
+                    'subject' => 'VARCHAR(255) NOT NULL',
+                    'message' => 'TEXT NOT NULL',
+                    'is_read' => 'TINYINT(1) DEFAULT 0'
+                ];
+
+                foreach ($columns_to_add as $column => $type) {
+                    try {
+                        $pdo->exec("ALTER TABLE messages ADD COLUMN {$column} {$type}");
+                    } catch (PDOException $e) {
+                        // Error for 'Duplicate column name' is SQLSTATE 42S21.
+                        // We can safely ignore this error and continue.
+                        if ($e->getCode() !== '42S21') {
+                            throw $e; // Re-throw other errors
+                        }
+                    }
+                }
+
+                // 3. Now, it's safe to insert.
+                $stmt = $pdo->prepare("INSERT INTO messages (user_id, subject, message) VALUES (?, ?, ?)");
                 $subject = "Re: " . $inquiry['subject'];
-                $stmt->execute([$inquiry['user_id'], $subject, $reply_body]);
+                $stmt->execute([$inquiry['user_id'], $subject, $reply_message]);
                 $success = "Reply sent successfully to the user's inbox.";
             } catch (PDOException $e) {
                 $error = "Failed to send message: " . $e->getMessage();
@@ -94,7 +123,7 @@ require_once 'assets/header.php';
                 <form method="POST">
                     <div class="mb-3">
                         <label class="form-label">Reply Message</label>
-                        <textarea name="reply_body" class="form-control" rows="6" required placeholder="Type your reply here..."></textarea>
+                        <textarea name="reply_message" class="form-control" rows="6" required placeholder="Type your reply here..."></textarea>
                     </div>
                     <button type="submit" class="btn btn-primary"><i class="fas fa-paper-plane"></i> Send Reply</button>
                 </form>
