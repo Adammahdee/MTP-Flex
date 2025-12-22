@@ -108,6 +108,9 @@ try {
             <li class="nav-item"><a class="nav-link" href="users.php"><i class="fas fa-users"></i> Users</a></li>
             <li class="nav-item"><a class="nav-link" href="settings.php"><i class="fas fa-cogs"></i> Settings</a></li>
             <li class="nav-item"><a class="nav-link" href="seed_categories.php"><i class="fas fa-seedling"></i> Seed Categories</a></li>
+            <li class="nav-item"><a class="nav-link" href="seed_accessories.php"><i class="fas fa-magic"></i> Seed Accessories</a></li>
+            <li class="nav-item"><a class="nav-link" href="find_duplicates.php"><i class="fas fa-copy"></i> Find Duplicates</a></li>
+            <li class="nav-item"><a class="nav-link" href="fix_accessories.php"><i class="fas fa-tools"></i> Fix Accessories</a></li>
         </ul>
         <div class="mt-auto" style="position: absolute; bottom: 20px; width: calc(100% - 40px);">
             <hr style="color: #6c757d;">

@@ -3,6 +3,29 @@
 // It assumes a session has been started and cart count calculated by the calling page.
 
 $cart_item_count = $cart_item_count ?? 0; // Null coalesce for safety
+
+// Fetch categories for navigation
+$nav_categories = [];
+if (isset($pdo)) {
+    try {
+        $stmt = $pdo->query("SELECT id, name, parent_id FROM categories ORDER BY name ASC");
+        $all_cats = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        $cats_map = [];
+        foreach ($all_cats as $cat) {
+            $cat['children'] = [];
+            $cats_map[$cat['id']] = $cat;
+        }
+        
+        foreach ($cats_map as $id => &$cat) {
+            if ($cat['parent_id'] && isset($cats_map[$cat['parent_id']])) {
+                $cats_map[$cat['parent_id']]['children'][] = &$cat;
+            } elseif (!$cat['parent_id']) {
+                $nav_categories[] = &$cat;
+            }
+        }
+    } catch (PDOException $e) { /* Ignore errors, menu will be empty */ }
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -49,9 +72,29 @@ $cart_item_count = $cart_item_count ?? 0; // Null coalesce for safety
             align-items: center;
         }
         .header .logo { font-size: 1.5rem; font-weight: 700; color: var(--primary-color); text-decoration: none; }
-        .header-nav { display: flex; gap: 2rem; }
-        .header-nav a { color: var(--text-primary); text-decoration: none; font-weight: 500; transition: color 0.2s; }
-        .header-nav a:hover, .header-nav a.active { color: var(--accent-color); }
+        .header-nav { display: flex; gap: 2rem; align-items: center; }
+        .nav-item { position: relative; }
+        .nav-link { color: var(--text-primary); text-decoration: none; font-weight: 500; transition: color 0.2s; display: block; padding: 0.5rem 0; }
+        .nav-link:hover, .nav-link.active { color: var(--accent-color); }
+        
+        /* Dropdown */
+        .dropdown-menu {
+            display: none;
+            position: absolute;
+            top: 100%;
+            left: 0;
+            background-color: var(--card-bg);
+            min-width: 200px;
+            box-shadow: var(--shadow);
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            padding: 0.5rem 0;
+            z-index: 1000;
+        }
+        .nav-item:hover .dropdown-menu { display: block; }
+        .dropdown-item { display: block; padding: 0.5rem 1rem; color: var(--text-primary); text-decoration: none; font-size: 0.9rem; }
+        .dropdown-item:hover { background-color: var(--bg-light); color: var(--accent-color); }
+        
         .header-icons { display: flex; align-items: center; gap: 1.5rem; }
         .header-icons a { color: var(--text-primary); text-decoration: none; font-size: 1.2rem; }
     </style>
@@ -61,12 +104,20 @@ $cart_item_count = $cart_item_count ?? 0; // Null coalesce for safety
         <div class="container">
             <a href="index.php" class="logo">MTP Flex Store</a>
             <nav class="header-nav">
-                <a href="index.php">Home</a>
-                <a href="store.php">Shop</a>
-                <a href="store.php?category=1">Men</a>
-                <a href="store.php?category=2">Women</a>
-                <a href="store.php?category=3">Kids</a>
-                <a href="store.php?category=4">Accessories</a>
+                <div class="nav-item"><a href="index.php" class="nav-link">Home</a></div>
+                <div class="nav-item"><a href="store.php" class="nav-link">Shop All</a></div>
+                <?php foreach ($nav_categories as $cat): ?>
+                    <div class="nav-item">
+                        <a href="store.php?category=<?= $cat['id'] ?>" class="nav-link"><?= htmlspecialchars($cat['name']) ?></a>
+                        <?php if (!empty($cat['children'])): ?>
+                            <div class="dropdown-menu">
+                                <?php foreach ($cat['children'] as $child): ?>
+                                    <a href="store.php?category=<?= $child['id'] ?>" class="dropdown-item"><?= htmlspecialchars($child['name']) ?></a>
+                                <?php endforeach; ?>
+                            </div>
+                        <?php endif; ?>
+                    </div>
+                <?php endforeach; ?>
             </nav>
             <div class="header-icons">
                 <a href="#"><i class="fas fa-search"></i></a>

@@ -21,8 +21,23 @@ $current_category = $_GET['category'] ?? ''; // Get category ID from URL if pres
 
 try {
     // 1. Fetch Categories for the sidebar/filter
-    $stmt = $pdo->query("SELECT id, name FROM categories ORDER BY name ASC");
-    $categories = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    $stmt = $pdo->query("SELECT id, name, parent_id FROM categories ORDER BY name ASC");
+    $all_cats = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    
+    // Build Tree
+    $categories = []; // Top level
+    $cats_map = [];
+    foreach ($all_cats as $c) {
+        $c['children'] = [];
+        $cats_map[$c['id']] = $c;
+    }
+    foreach ($cats_map as $id => &$c) {
+        if ($c['parent_id'] && isset($cats_map[$c['parent_id']])) {
+            $cats_map[$c['parent_id']]['children'][] = &$c;
+        } else {
+            $categories[] = &$c;
+        }
+    }
 
     // 2. Build Query for Products
     $sql = "
@@ -175,17 +190,24 @@ require_once __DIR__ . DIRECTORY_SEPARATOR . 'store_header.php';
                             All Products
                         </a>
                     </li>
-                    <?php foreach ($categories as $category): ?>
-                        <li>
-                            <?php
-                                $category_params = ['category' => $category['id']];
-                                if (!empty($search_term)) { $category_params['search'] = $search_term; }
-                            ?>
-                            <a href="store.php?<?= http_build_query($category_params) ?>" class="<?= ($current_category == $category['id']) ? 'active' : '' ?>">
-                                <?= htmlspecialchars($category['name']) ?>
-                            </a>
-                        </li>
-                    <?php endforeach; ?>
+                    <?php 
+                    function render_sidebar_cats($cats, $current, $search) {
+                        foreach ($cats as $category) {
+                            $params = ['category' => $category['id']];
+                            if (!empty($search)) { $params['search'] = $search; }
+                            $active = ($current == $category['id']) ? 'active' : '';
+                            echo '<li>';
+                            echo '<a href="store.php?' . http_build_query($params) . '" class="' . $active . '">' . htmlspecialchars($category['name']) . '</a>';
+                            if (!empty($category['children'])) {
+                                echo '<ul class="category-list" style="padding-left: 15px;">';
+                                render_sidebar_cats($category['children'], $current, $search);
+                                echo '</ul>';
+                            }
+                            echo '</li>';
+                        }
+                    }
+                    render_sidebar_cats($categories, $current_category, $search_term);
+                    ?>
                 </ul>
             </div>
         </aside>

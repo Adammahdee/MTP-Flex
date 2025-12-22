@@ -35,6 +35,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_category'])) {
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_category'])) {
     $name = trim($_POST['name'] ?? '');
     $description = trim($_POST['description'] ?? '');
+    $parent_id = !empty($_POST['parent_id']) ? filter_input(INPUT_POST, 'parent_id', FILTER_VALIDATE_INT) : null;
+
     if (empty($name)) {
         $error = "Category name cannot be empty.";
     } else {
@@ -43,8 +45,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_category'])) {
         if ($stmt->fetch()) {
             $error = "A category with that name already exists.";
         } else {
-            $insert_stmt = $pdo->prepare("INSERT INTO categories (name, description) VALUES (?, ?)");
-            if ($insert_stmt->execute([$name, $description])) {
+            $insert_stmt = $pdo->prepare("INSERT INTO categories (name, description, parent_id) VALUES (?, ?, ?)");
+            if ($insert_stmt->execute([$name, $description, $parent_id])) {
                 $success = "Category added successfully.";
             } else {
                 $error = "Failed to add category.";
@@ -57,9 +59,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_category'])) {
 $categories = [];
 try {
     $stmt = $pdo->query("
-        SELECT c.*, (SELECT COUNT(*) FROM products p WHERE p.category_id = c.id) as product_count 
+        SELECT c.*, p.name as parent_name, (SELECT COUNT(*) FROM products prod WHERE prod.category_id = c.id) as product_count 
         FROM categories c 
-        ORDER BY name ASC
+        LEFT JOIN categories p ON c.parent_id = p.id
+        ORDER BY c.name ASC
     ");
     $categories = $stmt->fetchAll(PDO::FETCH_ASSOC);
 } catch (PDOException $e) {
@@ -81,11 +84,13 @@ require_once 'assets/header.php';
             <div class="card-header"><strong>Existing Categories</strong></div>
             <div class="card-body">
                 <table class="table table-hover table-sm">
-                    <thead><tr><th>Name</th><th>Description</th><th>Products</th><th>Actions</th></tr></thead>
+                    <thead><tr><th>ID</th><th>Name</th><th>Parent</th><th>Description</th><th>Products</th><th>Actions</th></tr></thead>
                     <tbody>
                         <?php foreach ($categories as $cat): ?>
                         <tr>
+                            <td><?= $cat['id'] ?></td>
                             <td><?= htmlspecialchars($cat['name']) ?></td>
+                            <td><?= htmlspecialchars($cat['parent_name'] ?? '-') ?></td>
                             <td>
                                 <?php 
                                     $desc = htmlspecialchars($cat['description'] ?? '');
@@ -115,6 +120,15 @@ require_once 'assets/header.php';
                     <div class="mb-3">
                         <label for="name" class="form-label">Category Name</label>
                         <input type="text" class="form-control" id="name" name="name" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="parent_id" class="form-label">Parent Category</label>
+                        <select class="form-control" id="parent_id" name="parent_id">
+                            <option value="">None (Top Level)</option>
+                            <?php foreach ($categories as $p_cat): ?>
+                                <option value="<?= $p_cat['id'] ?>"><?= htmlspecialchars($p_cat['name']) ?></option>
+                            <?php endforeach; ?>
+                        </select>
                     </div>
                     <div class="mb-3">
                         <label for="description" class="form-label">Description</label>

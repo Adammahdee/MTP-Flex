@@ -71,8 +71,11 @@ if (!empty($nav_categories)) {
         } elseif ($category['name'] === "Seasonal / Occasion") {
             $seasonal_group = $category;
             $seasonal_group['name'] = 'Seasonal'; // Shorten name for display
-        } elseif (strtolower($category['name']) === 'accessories') {
-            $accessories_group = $category;
+        } elseif (strtolower(trim($category['name'])) === 'accessories') {
+            // Prioritize the Accessories category that has children (sub-categories)
+            if ($accessories_group === null || (!empty($category['children']) && empty($accessories_group['children']))) {
+                $accessories_group = $category;
+            }
         }
     }
 }
@@ -257,7 +260,18 @@ if (!empty($nav_categories)) {
 
                 <!-- Accessories Link -->
                 <?php if ($accessories_group): ?>
-                    <a href="store.php?category=<?= $accessories_group['id'] ?>"><?= htmlspecialchars($accessories_group['name']) ?></a>
+                    <?php if (!empty($accessories_group['children'])): ?>
+                        <div class="nav-item">
+                            <a href="store.php?category=<?= $accessories_group['id'] ?>" class="has-children"><?= htmlspecialchars($accessories_group['name']) ?></a>
+                            <div class="nav-dropdown-menu">
+                                <?php render_nav_dropdown_items($accessories_group['children']); ?>
+                            </div>
+                        </div>
+                    <?php else: ?>
+                        <div class="nav-item">
+                            <a href="store.php?category=<?= $accessories_group['id'] ?>"><?= htmlspecialchars($accessories_group['name']) ?></a>
+                        </div>
+                    <?php endif; ?>
                 <?php endif; ?>
 
                 <!-- Apparel Dropdown -->
