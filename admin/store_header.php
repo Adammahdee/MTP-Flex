@@ -120,7 +120,7 @@ if (isset($pdo)) {
                 <?php endforeach; ?>
             </nav>
             <div class="header-icons">
-                <a href="#"><i class="fas fa-search"></i></a>
+                <a href="../store.php"><i class="fas fa-search"></i></a>
                 <a href="cart.php"><i class="fas fa-shopping-cart"></i> (<?= $cart_item_count ?>)</a>
                 <?php // Differentiate between Guest, Customer, and Admin
                 if (isset($_SESSION['user_id'])):

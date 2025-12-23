@@ -65,7 +65,7 @@ $cart_item_count = $cart_item_count ?? 0; // Null coalesce for safety
                 <a href="../store.php">Shop</a>
             </nav>
             <div class="header-icons">
-                <a href="#"><i class="fas fa-search"></i></a>
+                <a href="../store.php"><i class="fas fa-search"></i></a>
                 <a href="../cart.php"><i class="fas fa-shopping-cart"></i> (<?= $cart_item_count ?>)</a>
                 <?php // Logic for USER accounts only. No admin links should be shown on the public site.
                 if (isset($_SESSION['user_id'])): ?>

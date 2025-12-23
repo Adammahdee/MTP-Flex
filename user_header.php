@@ -2,6 +2,10 @@
 // This header is for the PUBLIC user-facing store.
 // It assumes a session has been started and cart count calculated by the calling page.
 
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
 $cart_item_count = $cart_item_count ?? 0; // Null coalesce for safety
 ?>
 <!DOCTYPE html>
@@ -23,7 +27,6 @@ $cart_item_count = $cart_item_count ?? 0; // Null coalesce for safety
             --text-primary: #1f2937;
             --text-secondary: #6b7280;
             --border-color: #e5e7eb;
-            --shadow: 0 4px 6px -1px rgb(0 0 0 / 0.07), 0 2px 4px -2px rgb(0 0 0 / 0.07);
         }
         body {
             font-family: 'Poppins', sans-serif;
@@ -59,13 +62,23 @@ $cart_item_count = $cart_item_count ?? 0; // Null coalesce for safety
 <body>
     <header class="header">
         <div class="container">
-            <a href="../shop/index.php" class="logo">MTP Flex Store</a>
+            <a href="../index.php" class="logo">MTP Flex Store</a>
             <nav class="header-nav">
-                <a href="../shop/index.php">Home</a>
-                <a href="../shop/index.php">Shop</a>
+                <a href="../index.php">Home</a>
+                <a href="../store.php">Shop</a>
             </nav>
             <div class="header-icons">
-                <a href="#"><i class="fas fa-search"></i></a>
-                <a href="../shop/cart.php"><i class="fas fa-shopping-cart"></i> (<?= $cart_item_count ?>)</a>
+                <a href="../store.php"><i class="fas fa-search"></i></a>
+                <a href="../cart.php"><i class="fas fa-shopping-cart"></i> (<?= $cart_item_count ?>)</a>
                 <?php // Logic for USER accounts only. No admin links should be shown on the public site.
-                if (isset($_SESSION['user_id
+                if (isset($_SESSION['user_id'])): ?>
+                    <a href="../profile.php" title="My Profile"><i class="fas fa-user-circle"></i></a>
+                    <a href="../logout.php" title="Logout"><i class="fas fa-sign-out-alt"></i></a>
+                <?php else: ?>
+                    <a href="../login.php" title="Login / Register"><i class="fas fa-user"></i></a>
+                <?php endif; ?>
+            </div>
+        </div>
+    </header>
+
+    <main>

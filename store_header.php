@@ -236,6 +236,14 @@ if (!empty($nav_categories)) {
             float: right;
             margin-top: 4px;
         }
+
+        /* Search Overlay */
+        .search-overlay { display: none; position: absolute; top: 100%; left: 0; width: 100%; background: var(--card-bg); padding: 1rem 0; border-bottom: 1px solid var(--border-color); box-shadow: var(--shadow); z-index: 99; }
+        .search-overlay.active { display: block; }
+        .search-form { display: flex; gap: 0.5rem; max-width: 600px; margin: 0 auto; }
+        .search-input { flex: 1; padding: 0.5rem 1rem; border: 1px solid var(--border-color); border-radius: 6px; }
+        .search-btn { padding: 0.5rem 1.5rem; background: var(--primary-color); color: white; border: none; border-radius: 6px; cursor: pointer; }
+        .search-btn:hover { background-color: var(--accent-color); }
     </style>
 </head>
 <body>
@@ -299,7 +307,7 @@ if (!empty($nav_categories)) {
                 <?php endif; ?>
             </nav>
             <div class="header-icons">
-                <a href="#"><i class="fas fa-search"></i></a>
+                <a href="#" id="search-trigger"><i class="fas fa-search"></i></a>
                 <a href="cart.php"><i class="fas fa-cart-shopping"></i> (<?= $cart_item_count ?>)</a>
                 <div class="dropdown">
                     <a href="#" class="dropbtn" style="position: relative;">
@@ -326,5 +334,23 @@ if (!empty($nav_categories)) {
             </div>
         </div>
     </header>
+
+    <div class="search-overlay" id="search-overlay">
+        <div class="container">
+            <form action="store.php" method="GET" class="search-form">
+                <input type="text" name="search" class="search-input" placeholder="Search for products...">
+                <button type="submit" class="search-btn">Search</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('search-trigger').addEventListener('click', function(e) {
+            e.preventDefault();
+            const overlay = document.getElementById('search-overlay');
+            overlay.classList.toggle('active');
+            if (overlay.classList.contains('active')) overlay.querySelector('input').focus();
+        });
+    </script>
 
     <main>
