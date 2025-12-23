@@ -7,13 +7,15 @@ if (file_exists('../vendor/autoload.php')) {
     $faker = Faker\Factory::create();
 } else {
     // Simple fallback if Composer/Faker is not installed
-    class SimpleFaker {
-        function word() { $w = ['Shirt','Pant','Shoe','Hat','Watch','Bag','Scarf']; return $w[array_rand($w)]; }
-        function sentence() { return "This is a generated product description."; }
-        function numberBetween($min, $max) { return rand($min, $max); }
-        function randomFloat($d, $min, $max) { return rand($min*100, $max*100)/100; }
-        function randomElement($arr) { return $arr[array_rand($arr)]; }
-        function colorName() { return $this->randomElement(['Red','Blue','Green','Black','White']); }
+    if (!class_exists('SimpleFaker')) {
+        class SimpleFaker {
+            function word() { $w = ['Shirt','Pant','Shoe','Hat','Watch','Bag','Scarf']; return $w[array_rand($w)]; }
+            function sentence() { return "This is a generated product description."; }
+            function numberBetween($min, $max) { return rand($min, $max); }
+            function randomFloat($d, $min, $max) { return rand($min*100, $max*100)/100; }
+            function randomElement($arr) { return $arr[array_rand($arr)]; }
+            function colorName() { return $this->randomElement(['Red','Blue','Green','Black','White']); }
+        }
     }
     $faker = new SimpleFaker();
 }
